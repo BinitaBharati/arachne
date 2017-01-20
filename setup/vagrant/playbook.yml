@@ -25,8 +25,8 @@
   
  #Ansible command module runs the command on the remote server.
  #It expects the command to be already present on the remote server.
+  - name: chmod run.sh
+    command: chmod +x /home/vagrant/arachne/run.sh
+    
   - name: Execute run.sh
-    command: "{{ item }}"
-    with_items:
-    - chmod +x /home/vagrant/arachne/run.sh
-    - /home/vagrant/arachne/run.sh
+    shell: /home/vagrant/arachne/run.sh

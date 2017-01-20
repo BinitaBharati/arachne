@@ -125,6 +125,7 @@ public class RouteProcessor extends Worker{
             String prevVal = routeProcessingMap.putIfAbsent(currentRoute, currentRoute);
             boolean matchingRouteFound = false;
             if (prevVal == null) {
+		logger.info("processRoute: got lock - absRouteEntry "+absRouteEntry);
                 lock = true; //got the lock to process this route.
                 //am the only thread processing this route.
                 for (AbstractRouteEntry each : absRouteEntry) {
@@ -134,12 +135,15 @@ public class RouteProcessor extends Worker{
                     if (rcvdRoute.getDestinationNw().equals(each.getDestinationNw()) &&
                          rcvdRoute.getNetMask().equals(each.getNetMask())) {
                         matchingRouteFound = true;
-                        logger.info("processRoute: matching route found!");
-                        if (Integer.parseInt(rcvdRoute.getMetric()) < Integer.parseInt(each.getMetric())) {    
+                        logger.info("processRoute: matching route found for "+rcvdRoute.getDestinationNw());
+                        logger.info("processRoute: "+rcvdRoute.getDestinationNw() +" - metric1 "+rcvdRoute.getMetric() + ", metric2 = "+each.getMetric());
+                        if (Integer.parseInt(rcvdRoute.getMetric() + 1) < Integer.parseInt(each.getMetric())) {    
                            //install new route , remove old one.                            
                             //both delete and insert should be done in a transaction.
                             //The edit to DB and memory should happen in a single transaction ideally
                             String addRouteInterface = ArachU.getRouteInterface(hostInterfaceIpList, packetSender.substring(1));
+                            //Increment the receieved route metric by 1.
+                            rcvdRoute.setMetric(Integer.parseInt(rcvdRoute.getMetric()) + 1 + "");
                             ArachU.editRoute(rcvdRoute, arachneProp, jilapiProp, os, addRouteInterface);                            
                             absRouteEntry.remove(each);//This will change the index of the route within list.Does that matter ? No!
                             absRouteEntry.add(rcvdRoute);
@@ -156,6 +160,8 @@ public class RouteProcessor extends Worker{
                     //First insert route into system.This command does not produce any input stream, but on error, may produce a error stream
                     //If error stream is produced the execNativeCommand will throw Exception.
                     String addRouteInterface = ArachU.getRouteInterface(hostInterfaceIpList, packetSender.substring(1));
+                    //Increment the receieved route metric by 1.
+                    rcvdRoute.setMetric(Integer.parseInt(rcvdRoute.getMetric()) + 1 + "");
                     ArachU.addRoute(rcvdRoute, arachneProp, jilapiProp, os, addRouteInterface);
                     absRouteEntry.add(rcvdRoute);
                 }

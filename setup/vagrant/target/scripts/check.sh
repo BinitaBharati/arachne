@@ -16,3 +16,8 @@ if [[ "" !=  "$PID" ]];
 
 
 fi
+
+
+sudo rm -rf /home/vagrant/arachne/logs/* /home/vagrant/arachne/test.db /home/vagrant/arachne/output.log
+sudo rm -rf /home/vagrant/arachne/logs/* /home/vagrant/test.db /home/vagrant/output.log
+

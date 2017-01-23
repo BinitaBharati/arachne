@@ -124,36 +124,32 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     router3.vm.provision :shell, path: "target/scripts/2PortRouter.sh"
     end
 
-    #net3 - 192.168.30.0/24
     #net3mc1	
     config.vm.define :net3mc1 do |net3mc1|
-    net3mc1.vm.provider :virtualbox do |v|
+     net3mc1.vm.provider :virtualbox do |v|
       v.name = "net3mc1"
       v.customize ["modifyvm", :id, "--memory", "1048"]
 	 #v.gui = true
+
     end
     net3mc1.vm.network :private_network, ip: "192.168.30.13"
     net3mc1.vm.hostname = "net3mc1"
     net3mc1.vm.provision :shell, path: "target/scripts/non-router.sh"
     end
 
-   #workstation VM. This is the VM from where we will provision the rest of the VMs
+
+
    #workstation	
     config.vm.define :workstation do |workstation|
-    #workstation.vm.provider "virtualbox" do |v|
-      #v.vmx["memsize"]  = "1048"
+     workstation.vm.provider :virtualbox do |v|
+      v.name = "workstation"
+      v.customize ["modifyvm", :id, "--memory", "1048"]
 	 #v.gui = true
-    #end
-    workstation.vm.provider :virtualbox do |v|
-      workstation.name = "workstation"
-      workstation.customize ["modifyvm", :id, "--memory", "1048"]
-	 workstation.gui = true
+
     end
     workstation.vm.network :private_network, ip: "192.168.50.11"
     workstation.vm.hostname = "workstation"
     workstation.vm.provision :shell, path: "target/scripts/workStationConfig.sh"
     end
-
-
 
 end

@@ -15,7 +15,8 @@ sudo apt-get -y install dos2unix
 
 #install ansible
 sudo apt-add-repository ppa:ansible/ansible -y
-sudo apt-get install ansible -y
+sudo apt-get install ansible -y #installs 1.5.4
+sudo apt-get install ansible -y #installs 2.2.1.0
 
 
 #install sshpass

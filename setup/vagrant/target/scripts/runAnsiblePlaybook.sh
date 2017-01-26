@@ -45,7 +45,7 @@ cd /home/vagrant/deploy
 #Recursively run dos2unix on all files under deploy folder
 find . -type f -exec dos2unix {} \;
 chmod 666 playbook.yml ansible_inventory
-ansible-playbook playbook.yml -i ansible_inventory -vvv
+ansible-playbook playbook.yml -i ansible_inventory
 
 
 

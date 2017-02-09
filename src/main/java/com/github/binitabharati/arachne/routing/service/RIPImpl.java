@@ -22,6 +22,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Queue;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingDeque;
@@ -33,6 +34,7 @@ import org.slf4j.LoggerFactory;
 import com.github.binitabharati.arachne.nwking.model.IpV4Address;
 import com.github.binitabharati.arachne.routing.rip.model.AbstractRouteEntry;
 import com.github.binitabharati.arachne.routing.service.worker.Worker;
+import com.github.binitabharati.arachne.routing.service.worker.rip.CleanupWorker;
 import com.github.binitabharati.arachne.routing.service.worker.rip.MulticastListener;
 import com.github.binitabharati.arachne.routing.service.worker.rip.MulticastSender;
 import com.github.binitabharati.arachne.routing.service.worker.rip.RouteProcessor;
@@ -62,13 +64,16 @@ public class RIPImpl{
     private Properties jilapiProp;
     private String osName;
     
+    private Map<String, String> routeProcessingMap;
+    
     public RIPImpl(Properties arachneProp, Properties jilapiProp) {
         // TODO Auto-generated constructor stub
         //super(arachneProp, jilapiProp);
     	this.arachneProp = arachneProp;
     	this.jilapiProp = jilapiProp;
     	this.osName = ArachU.getOsName();
-        store = new LinkedBlockingQueue<>();       
+        store = new LinkedBlockingQueue<>(); 
+        routeProcessingMap = new ConcurrentHashMap<>();
     }
 
     //@Override
@@ -127,7 +132,7 @@ public class RIPImpl{
         }
         
         Worker routeProcessor = new RouteProcessor(arachneProp, jilapiProp, osName, 
-                store, absRouteEntry, splitHorizon, hostInterfaceIpList);
+                store, absRouteEntry, splitHorizon, hostInterfaceIpList, routeProcessingMap);
         
         Thread routeProcThread = new Thread(routeProcessor);        
         routeProcThread.setUncaughtExceptionHandler(routeProcessor);
@@ -138,6 +143,12 @@ public class RIPImpl{
         Thread routeProcThread2 = new Thread(routeProcessor);        
         routeProcThread2.setUncaughtExceptionHandler(routeProcessor);
         routeProcThread2.start();
+        
+        Worker routeCleaner = new CleanupWorker(arachneProp, jilapiProp, absRouteEntry, routeProcessingMap, osName);
+        Thread routeCleanerThread = new Thread(routeCleaner);        
+        routeCleanerThread.setUncaughtExceptionHandler(routeCleaner);
+        routeCleanerThread.start();
+        
         
         logger.debug("init: exiting");
         

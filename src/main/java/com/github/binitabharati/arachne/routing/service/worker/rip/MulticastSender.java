@@ -26,7 +26,6 @@ import org.slf4j.LoggerFactory;
 
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Output;
-import com.github.binitabharati.arachne.nwking.model.RouteTable;
 import com.github.binitabharati.arachne.routing.service.worker.Worker;
 import com.github.binitabharati.arachne.service.model.RouteEntry;
 import com.github.binitabharati.arachne.util.ArachU;
@@ -62,18 +61,15 @@ public class MulticastSender extends Worker {
 
     public MulticastSender(Properties arachneProp, Properties jilapiProp, String osName, 
            String multicastGrpStr) {
-        logger.debug("constructor");
         this.workerType = Worker.WorkerType.routeSender;
         this.osName = osName;
         this.arachneProp = arachneProp;
         this.jilapiProp = jilapiProp;
         
         
-            try {   logger.info("constructor: here1 huhuhaha");
+            try {   
                     this.group = InetAddress.getByName(multicastGrpStr); 
-                    logger.info("constructor: here2");
                     dgSocket = new MulticastSocket();
-                    logger.info("constructor: multicastSender = "+dgSocket);
             }
             catch (UnknownHostException e) {
                 // TODO Auto-generated catch block
@@ -96,24 +92,20 @@ public class MulticastSender extends Worker {
        while(true) {
            try {
             List<RouteEntry> myRoutes = ArachU.getRoutes(arachneProp, jilapiProp, osName);
-            logger.info("run: myRoutes = "+myRoutes);
-
+            logger.debug("run: myRoutes = "+myRoutes);
             //serialize with SBE
             byte[] buffer = ArachU.encodeRoute(myRoutes);
 
-            logger.debug("run: buffer length = "+buffer.length + ", group = " + group);
             /* The entire route table goes in a single DatagramPacket ? 
-             * If the route table is too big, you can break it into more than 1 RouteTable instance.
+             * Yes, for now
              * 
              */
             Enumeration<NetworkInterface> networkInterfaces = NetworkInterface.getNetworkInterfaces();
             while (networkInterfaces.hasMoreElements()) {
             	 NetworkInterface iface = networkInterfaces.nextElement();
-                 System.out.println("MulticastSender: iface = "+iface);
                  Enumeration<InetAddress> inetAddresses = iface.getInetAddresses();
                  for (InetAddress inetAddress : Collections.list(inetAddresses)) {
                  	String ipAddress = inetAddress.getHostAddress();
-                     System.out.println("MulticastSender: ipAddress = "+ipAddress);
                      List<String> filteredIntfPrefixList = ArachU.intfToListeningPortMap.keySet().stream().filter(eachIntfPrefix -> {
                      	if (ipAddress.startsWith(eachIntfPrefix)) {
                      		return true;
@@ -121,7 +113,6 @@ public class MulticastSender extends Worker {
                      		return false;
                      	}
                      }).collect(Collectors.toList());
-                     System.out.println("MulticastSender: filteredIntfPrefixList = "+filteredIntfPrefixList);
                      if (filteredIntfPrefixList != null && filteredIntfPrefixList.size() > 0) {
                     	  for (String eachFilteredIntfPrefix : filteredIntfPrefixList) {
                           	if (ArachU.intfToListeningPortMap.keySet().contains(eachFilteredIntfPrefix)) {
@@ -135,7 +126,7 @@ public class MulticastSender extends Worker {
                      }
                  }
             }
-           
+            Thread.sleep(ArachU.RIP_ROUTE_PUBLISH_INTERVAL_SECS*1000);
             
             
         } catch (Exception e1) {

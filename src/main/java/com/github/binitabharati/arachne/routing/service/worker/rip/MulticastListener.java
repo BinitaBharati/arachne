@@ -75,11 +75,9 @@ public class MulticastListener extends Worker {
         Enumeration<NetworkInterface> networkInterfaces = NetworkInterface.getNetworkInterfaces();
         while (networkInterfaces.hasMoreElements()) {
             NetworkInterface iface = networkInterfaces.nextElement();
-            System.out.println("MulticastListener: iface = "+iface);
             Enumeration<InetAddress> inetAddresses = iface.getInetAddresses();
             for (InetAddress inetAddress : Collections.list(inetAddresses)) {
             	String ipAddress = inetAddress.getHostAddress();
-                System.out.println("MulticastListener: ipAddress = "+ipAddress);
                 List<String> filteredIntfPrefixList = ArachU.intfToListeningPortMap.keySet().stream().filter(eachIntfPrefix -> {
                 	if (ipAddress.startsWith(eachIntfPrefix)) {
                 		return true;
@@ -87,7 +85,6 @@ public class MulticastListener extends Worker {
                 		return false;
                 	}
                 }).collect(Collectors.toList());
-                System.out.println("MulticastListener: filteredIntfPrefixList = "+filteredIntfPrefixList);
                 for (String eachFilteredIntfPrefix : filteredIntfPrefixList) {
                 	if (ArachU.intfToListeningPortMap.keySet().contains(eachFilteredIntfPrefix)) {
                     	
@@ -121,7 +118,6 @@ public class MulticastListener extends Worker {
 				this.multicastSocket = new MulticastSocket(listenerPort);
 				//multicastSocket.setNetworkInterface(iface);
 				this.multicastSocket.joinGroup(multicastGrp);
-                logger.info("MulticastListener: join group success for  = "+listenerPort);
 
     		}
             catch (IOException e) {
@@ -141,10 +137,8 @@ public class MulticastListener extends Worker {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
-                logger.info("run: Got packet123 " + 
-                        Arrays.toString(packet.getData()) + " from port = "+listenerPort);
-                logger.info("run: Got packet length " + 
-                        packet.getData().length);
+                logger.debug("run: Got packet123 " + 
+                        Arrays.toString(packet.getData()) + " from port = "+listenerPort);              
                 boolean added = store.offer(packet);//offer can not block, as I have not set any capacity to the underlying LinkedList
                 packet = new DatagramPacket(new byte[4096], 4096);
 			}

@@ -4,10 +4,12 @@ import java.io.ByteArrayInputStream;
 import java.net.DatagramPacket;
 import java.text.MessageFormat;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.Queue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
@@ -39,7 +41,7 @@ public class RouteProcessor extends Worker{
     private Queue<DatagramPacket> store;
     private Queue<AbstractRouteEntry> absRouteEntry;
     boolean isSplitHorizon;
-    private ConcurrentHashMap<String, String> routeProcessingMap;
+    private Map<String, String> routeProcessingMap;//thread safe ConcurrentHashMap
     private List<IpV4Address> hostInterfaceIpList;
     
     public void addRouteEntry(AbstractRouteEntry routeEntry) {
@@ -48,7 +50,7 @@ public class RouteProcessor extends Worker{
        
     public RouteProcessor(Properties arachneProp,Properties jilapiProp,  String os, Queue<DatagramPacket> store,
             Queue<AbstractRouteEntry> absRouteEntry, boolean isSplitHorizon,
-            List<IpV4Address> hostInterfaceIpList) {
+            List<IpV4Address> hostInterfaceIpList, Map<String, String> routeProcessingMap) {
         this.workerType = Worker.WorkerType.routeProcessor;
         this.arachneProp = arachneProp;
         this.jilapiProp = jilapiProp;
@@ -58,8 +60,7 @@ public class RouteProcessor extends Worker{
         this.isSplitHorizon = isSplitHorizon;
         this.hostInterfaceIpList = hostInterfaceIpList;
         logger.debug("RouteProcessor = "+hostInterfaceIpList);
-
-        this.routeProcessingMap = new ConcurrentHashMap<>();
+        this.routeProcessingMap = routeProcessingMap;
     }
         
     
@@ -86,7 +87,7 @@ public class RouteProcessor extends Worker{
                         received = dp.getData();
                         List<AbstractRouteEntry> rcvdRoutes = ArachU.decodeRoute(received, packetSender);                                     
                         //String receivedStr = new String(received);
-                        logger.debug(tName + "run: rcdvRoutes = "+rcvdRoutes);
+                        logger.debug(tName + "run: receivedRoutes = "+rcvdRoutes);
                         for (AbstractRouteEntry rcvdRouteEntry : rcvdRoutes) {
                             processRoute(absRouteEntry, rcvdRouteEntry, packetSender);
                         }
@@ -103,29 +104,25 @@ public class RouteProcessor extends Worker{
             
     }
     
-    private List<AbstractRouteEntry> cloneRoute(List<AbstractRouteEntry> rcvdRoutes) {
-        //clone the original rcvdRoutes
-        List<AbstractRouteEntry> rcvdRoutesCopy = rcvdRoutes.stream().map(each -> {
-            return new AbstractRouteEntry(each.getDestinationNw(), each.getGateway(), 
-                    each.getNetMask(), each.getMetric(), each.getPort(), each.getPublisherAddress());
-        }).collect(Collectors.toList());
-        logger.debug("cloneRoute: rcvdRoutesCopy = "+rcvdRoutesCopy);        
-        return rcvdRoutesCopy;
-    }
     
-
+    //http://www.9tut.com/rip-routing-protocol-tutorial, https://supportforums.cisco.com/discussion/12043571/confusion-rip-timers
+    //Cisco supports a additional hold-down timer, but that is not described in the RFC.
     public boolean processRoute(Queue<AbstractRouteEntry> absRouteEntry, 
             AbstractRouteEntry rcvdRoute, String packetSender) throws Exception {
-        logger.info("processRoute: entered with " + rcvdRoute + " and absRouteEntry = "+absRouteEntry
+        String curThreadId = Thread.currentThread().getId() + "";
+        logger.info(curThreadId +" processRoute: entered with " + rcvdRoute + " and absRouteEntry = "+absRouteEntry
                 +", packetSender = "+packetSender);
         String currentRoute = rcvdRoute.getDestinationNw() + rcvdRoute.getNetMask();
         boolean lock = false;
+	
         while (!lock) {
             
-            String prevVal = routeProcessingMap.putIfAbsent(currentRoute, currentRoute);
+            String prevVal = routeProcessingMap.putIfAbsent(currentRoute, curThreadId);
+	    //logger.info(curThreadId +"processRoute: prevVal = "+prevVal);
             boolean matchingRouteFound = false;
             if (prevVal == null) {
-		logger.info("processRoute: got lock - absRouteEntry "+absRouteEntry);
+            	logger.debug(curThreadId+ " processRoute: got lock - absRouteEntry "+absRouteEntry);
+            	logger.debug(curThreadId+ " processRoute: got lock - currentRoute "+currentRoute);
                 lock = true; //got the lock to process this route.
                 //am the only thread processing this route.
                 for (AbstractRouteEntry each : absRouteEntry) {
@@ -135,20 +132,45 @@ public class RouteProcessor extends Worker{
                     if (rcvdRoute.getDestinationNw().equals(each.getDestinationNw()) &&
                          rcvdRoute.getNetMask().equals(each.getNetMask())) {
                         matchingRouteFound = true;
-                        logger.info("processRoute: matching route found for "+rcvdRoute.getDestinationNw());
-                        logger.info("processRoute: "+rcvdRoute.getDestinationNw() +" - metric1 "+rcvdRoute.getMetric() + ", metric2 = "+each.getMetric());
-                        if (Integer.parseInt(rcvdRoute.getMetric() + 1) < Integer.parseInt(each.getMetric())) {    
-                           //install new route , remove old one.                            
-                            //both delete and insert should be done in a transaction.
-                            //The edit to DB and memory should happen in a single transaction ideally
-                            String addRouteInterface = ArachU.getRouteInterface(hostInterfaceIpList, packetSender.substring(1));
-                            //Increment the receieved route metric by 1.
-                            rcvdRoute.setMetric(Integer.parseInt(rcvdRoute.getMetric()) + 1 + "");
-                            ArachU.editRoute(rcvdRoute, arachneProp, jilapiProp, os, addRouteInterface);                            
-                            absRouteEntry.remove(each);//This will change the index of the route within list.Does that matter ? No!
-                            absRouteEntry.add(rcvdRoute);
-                            //return true;
-                        }
+                        logger.debug(curThreadId+ " processRoute: matching route found for "+rcvdRoute);                      
+                        logger.debug(curThreadId+ " processRoute: "+rcvdRoute.getDestinationNw() +" - metric1 "+rcvdRoute.getMetric() + ", metric2 = "+each.getMetric());
+                        //logger.info(curThreadId+ " processRoute: "+rcvdRoute);
+                        if (!skipRouteUpdates(each)) {
+                        	
+                        		if (Integer.parseInt(rcvdRoute.getMetric() + 1) < Integer.parseInt(each.getMetric())) { 
+                                	 //install new route , remove old one.                            
+                                    //both delete and insert should be done in a transaction.
+                                    //The edit to DB and memory should happen in a single transaction ideally
+                                    String addRouteInterface = ArachU.getRouteInterface(hostInterfaceIpList, packetSender.substring(1));
+                                    //Increment the receieved route metric by 1.
+                                    /*rcvdRoute.setMetric(Integer.parseInt(rcvdRoute.getMetric()) + 1 + "");
+                                    rcvdRoute.setPort(addRouteInterface);
+                                    rcvdRoute.setPublisherAddress(packetSender);*/
+                                    each.setMetric(Integer.parseInt(rcvdRoute.getMetric()) + 1 + "");
+                                    each.setPort(addRouteInterface);
+                                    each.setPublisherAddress(packetSender);
+                                    ArachU.editRoute(each, arachneProp, jilapiProp, os); 
+                                    
+                                    //reset RIP stale timer
+                            		each.setRouteInstalledTimeInNanoSecs(System.nanoTime());
+                                    logger.debug(curThreadId+" processRoute: after editing existing route "+absRouteEntry);
+                                    
+                                } else if (rcvdRoute.getPublisherAddress().equals(each.getPublisherAddress())) {
+                                	//no update in the route entry, just that the RIP stale timer needs to be reset.
+                                	//reset RIP stale timer
+                                    logger.debug(curThreadId+" processRoute: updating stale timer for  "+each);
+
+                            		each.setRouteInstalledTimeInNanoSecs(System.nanoTime());
+                                    logger.debug(curThreadId+" processRoute: after editing existing route "+absRouteEntry);
+                                }
+                        		
+                        	} else {
+                                logger.debug(curThreadId+ " processRoute: skipping processing of installed route = "+each);
+                                logger.debug(curThreadId+ " processRoute: skipping processing of received route = "+rcvdRoute);
+
+
+                        	}
+                        
                     }
                     if (matchingRouteFound) { //you are done.
                         break;
@@ -162,8 +184,15 @@ public class RouteProcessor extends Worker{
                     String addRouteInterface = ArachU.getRouteInterface(hostInterfaceIpList, packetSender.substring(1));
                     //Increment the receieved route metric by 1.
                     rcvdRoute.setMetric(Integer.parseInt(rcvdRoute.getMetric()) + 1 + "");
-                    ArachU.addRoute(rcvdRoute, arachneProp, jilapiProp, os, addRouteInterface);
+                    rcvdRoute.setPort(addRouteInterface);
+                    rcvdRoute.setPublisherAddress(packetSender);
+
+                    ArachU.addRoute(rcvdRoute, arachneProp, jilapiProp, os);
+                    logger.debug("processRoute: after adding new route entry for "+rcvdRoute.getDestinationNw());
+                    rcvdRoute.setRouteInstalledTimeInNanoSecs(System.nanoTime());
+                    //rcvdRoute.setRouteMarkedForDeletionTimeInNanoSecs(null);
                     absRouteEntry.add(rcvdRoute);
+                    logger.debug("processRoute: after adding new route "+absRouteEntry);
                 }
                 //remove entry from routeProcessingMap, so that other threads can get the lock.
                 routeProcessingMap.remove(currentRoute);
@@ -172,6 +201,24 @@ public class RouteProcessor extends Worker{
         }
         
         return false;
+    }
+    
+    private boolean skipRouteUpdates(AbstractRouteEntry are) {
+    	if (are.getPublisherAddress() != null) {
+    		if (are.getRouteHoldDownTimeInNanoSecs() != null) {
+            	Long currentTimeInNanoSecs = System.nanoTime();
+    			Long timeElapsedSinceRouteHoldDown = currentTimeInNanoSecs - are.getRouteHoldDownTimeInNanoSecs();
+    			long elapsedTime = TimeUnit.SECONDS.convert(timeElapsedSinceRouteHoldDown, TimeUnit.NANOSECONDS);
+    			if (elapsedTime < ArachU.RIP_ROUTE_HOLD_INTERVAL_SECS) {
+    				return true;
+    			}
+    			return false;
+            }
+    		return false;
+            
+    	}
+    	
+    	return true;
     }
 
 

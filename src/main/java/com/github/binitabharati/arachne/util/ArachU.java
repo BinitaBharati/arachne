@@ -43,9 +43,11 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import org.agrona.concurrent.UnsafeBuffer;
 import org.apache.commons.net.util.SubnetUtils;
@@ -110,16 +112,24 @@ public class ArachU {
     public static final int RIP_ROUTE_PUBLISH_INTERVAL_SECS = 30;
     
     //Once a route is installed, it does not remain valid forever. If within a specified duration
-    //no more updates to the same entry arrives, then the route is considered stale and marked
-    //for deletion.
+    //no more updates to the same entry arrives, then the route is considered stale
+    //(metric marked as 16 which is unreachable) and marked for hold-down.    
     public static final int RIP_ROUTE_STALE_INTERVAL_SECS = 180;
     
-    //Once a route has been marked stale, some time must pass, before it gets really
-    //deleted from the routing table.If within that time, RIP response arrives for
-    //the now marked stale route, then the RIP_ROUTE_STALE_INTERVAL_SECS again gets reset to 0.
+    //This timer comes into picture after RIP_ROUTE_STALE_INTERVAL timer has kicked in.
+    //Any updates received for a  stale route from a publisher address other then the
+    //one from which the stale route was initially learnt, will be ignored.
+    //If during the hold-down period, update is received from the initial
+    //publisher for a better metric, then the route is removed from being stale.   
+    public static final int RIP_ROUTE_HOLD_INTERVAL_SECS = 180;
+    
+    //Once a route has completed RIP_ROUTE_HOLD_INTERVAL, some time must pass, before it gets really
+    //deleted from the routing table.If within that time, RIP response arrives with a better metric
+    //for the now marked stale route, then the RIP_ROUTE_STALE_INTERVAL_SECS again gets reset to 0.
+    //And the route entry gets updated with the new metric.
     //While, the route is waiting for actual deletion, the RIP response will send the metric
     //to the concerned network as 16 (unreachable).
-    public static final int RIP_ROUTE_DELETE_INTERVAL_SECS = 120;
+    public static final int RIP_ROUTE_FLUSH_INTERVAL_SECS = 120;
     
     public static final String BYTE_STREAM_ENTITY_END = "EOE";
     
@@ -136,6 +146,8 @@ public class ArachU {
     public static final int WORKERS_DEFAULT_THREAD_COUNT = 3;
     
     public static final String IPV4_SHOW_ROUTE_CMND_PREFIX = "ipV4RouteTable.os.";
+    
+    public static final String MULTICAST_ROUTE_DESTN = "224.0.0.0";
     /**
      * http://www.regular-expressions.info/optional.htm
        http://www.mkyong.com/regular-expressions/how-to-validate-ip-address-with-regular-expression/
@@ -153,7 +165,11 @@ public class ArachU {
     	intfToListeningPortMap.put("192.168.20", 523);
     	intfToListeningPortMap.put("192.168.30", 524);
     	intfToListeningPortMap.put("192.168.40", 525);
+    	
+    	flag = new AtomicBoolean(false);
     }
+    
+    private static AtomicBoolean flag;
    
 
     public static Process getProcess(String... command) throws Exception {
@@ -173,49 +189,63 @@ public class ArachU {
      * @throws InterruptedException 
      * 
      * Ref : http://www.javaworld.com/article/2071275/core-java/when-runtime-exec---won-t.html
+       This method should be restricted to be single threaded, as multiple parallel access/edits
+       to the native command may not work in a clean manner.
      */
     public static String execNativeCommand(Properties prop, String[] command) throws Exception {
+        String curThreadId = Thread.currentThread().getId() + "";
         List<String> cmndStr = Arrays.asList(command);
-        logger.debug("execNativeCommand: entered with command = "+cmndStr);
+        logger.debug(curThreadId+ " execNativeCommand: entered with command = "+cmndStr);
         String resultJson = "";
         Runtime rt = Runtime.getRuntime();
-        Process proc = rt.exec(command);
-        
-        // any error message?
-        StreamGobbler errorGobbler = new 
-            StreamGobbler(proc.getErrorStream(), "ERROR");            
-        
-        // any output?
-        StreamGobbler outputGobbler = new 
-            StreamGobbler(proc.getInputStream(), "OUTPUT");
-            
-        // kick them off
-        errorGobbler.start();
-        outputGobbler.start();
-        
-        errorGobbler.join();
-        outputGobbler.join();
-        
-        // any error???
-        int exitVal = proc.waitFor();
-        logger.info("execNativeCommand: cmnd = "+cmndStr + ", output = "+outputGobbler.getResult() + ", exitVal = "+exitVal);       
-        if(exitVal != 0) {
-            if(errorGobbler.getResult() != null) {
-                throw new Exception("Command "+Arrays.asList(command) + " did not run normally. "+errorGobbler.getResult());
-            } else {
-                throw new Exception("Command "+Arrays.asList(command) + " did not run normally. ");
-            }
-            
-        } else { //success
-            Jilapi jilapi = new Jilapi(prop, "ipV4RouteTable.os.linux");
-            if (outputGobbler.getResult() != null)//Not all commands return response. Eg , successful route add does not return any response.
-                if (outputGobbler.getResult() != null) {
-                    resultJson = jilapi.parseCommand(outputGobbler.getResult());
+        Process proc = null;
+        int exitVal = -1;
+        while(true) {
+        	if (flag.compareAndSet(false, true)) {
+                logger.debug(curThreadId+ " execNativeCommand: executing command = "+cmndStr);
+           	 proc = rt.exec(command);
+           	// any error message?
+                StreamGobbler errorGobbler = new 
+                    StreamGobbler(proc.getErrorStream(), "ERROR");            
+                
+                // any output?
+                StreamGobbler outputGobbler = new 
+                    StreamGobbler(proc.getInputStream(), "OUTPUT");
+                    
+                // kick them off
+                errorGobbler.start();
+                outputGobbler.start();
+                
+                errorGobbler.join();
+                outputGobbler.join();
+                
+                // any error???
+                exitVal = proc.waitFor();
+                
+                logger.info(curThreadId+ " execNativeCommand: cmnd = "+cmndStr + ", output = "+outputGobbler.getResult() + ", exitVal = "+exitVal);       
+                if(exitVal != 0) {
+                    if(errorGobbler.getResult() != null) {
+                        throw new Exception("Command "+Arrays.asList(command) + " did not run normally. "+errorGobbler.getResult());
+                    } else {
+                        throw new Exception("Command "+Arrays.asList(command) + " did not run normally. ");
+                    }
+                    
+                } else { //success
+                    Jilapi jilapi = new Jilapi(prop, "ipV4RouteTable.os.linux");
+                    if (outputGobbler.getResult() != null)//Not all commands return response. Eg , successful route add does not return any response.
+                        if (outputGobbler.getResult() != null) {
+                            resultJson = jilapi.parseCommand(outputGobbler.getResult());
+                        }
+                    
+                    logger.info(curThreadId+ " execNativeCommand: Jilapi: resultJson = "+resultJson);
                 }
-            
-            logger.info("Jilapi: resultJson = "+resultJson);
+                flag.compareAndSet(true, false);
+                break;
+           }
         }
         
+        
+              
         return resultJson;
     }
     
@@ -286,6 +316,13 @@ public class ArachU {
                routes = ArachU.mapJsonArray(resultJson, listType);
            }
        }
+       routes = routes.stream().filter(eachRouteEntry -> {
+    	   if (!eachRouteEntry.getDestinationNw().equals(ArachU.MULTICAST_ROUTE_DESTN)) {
+    		   return true;
+    	   } else {
+    		   return false;
+    	   }
+       }).collect(Collectors.toList());
        return routes;
    }
    
@@ -537,15 +574,16 @@ public class ArachU {
    }
    
    public static void addRoute(AbstractRouteEntry are, Properties arachneProp, 
-           Properties jilapiProp, String os, String insertRouteInterface) throws Exception {
-       
+           Properties jilapiProp, String os) throws Exception {
+	   String curThreadId = Thread.currentThread().getId() + "";
+	   logger.debug(curThreadId + " addRoute: entered with "+are);
        //The insertion to DB and memory should happen in a single transaction ideally.
        //First insert route into system.This command does not produce any input stream, but on error, may produce a error stream
        //If error stream is produced the execNativeCommand will throw Exception.
        String cmndPattern = arachneProp.getProperty("ipV4RouteTable.insert.os." + os);
        MessageFormat mf = new MessageFormat(cmndPattern);
        String[] cmnd = mf.format(cmndPattern, new Object[]{are.getDestinationNw(), 
-               are.getNetMask(), insertRouteInterface, are.getMetric()}).split(" ");
+               are.getNetMask(), are.getPort(), are.getMetric(), are.getPublisherAddress().substring(1)}).split(" ");
        String json = execNativeCommand(jilapiProp, cmnd);
        
        
@@ -565,7 +603,7 @@ public class ArachU {
              stmt.setString(3, are.getGateway());
              stmt.setString(4, are.getNetMask());
              stmt.setString(5, are.getMetric());
-             stmt.setString(6, insertRouteInterface);
+             stmt.setString(6, are.getPort());
              stmt.setString(7, are.getPublisherAddress());
                        
              stmt.executeUpdate();
@@ -586,21 +624,27 @@ public class ArachU {
    
    
    public static void editRoute(AbstractRouteEntry are, Properties arachneProp, 
-           Properties jilapiProp, String os, String insertRouteInterface) throws Exception {
-       logger.info("editRoute: entered with "+are);
+           Properties jilapiProp, String os) throws Exception {
+       String curThreadId = Thread.currentThread().getId() + "";
+       logger.info(curThreadId+" editRoute: entered with os "+os);
+       logger.info(curThreadId+ " editRoute: entered with "+are);
        //First delete and then insert route into system (there is no edit route command).This command does not produce any input stream, but on error, may produce a error stream
        //If error stream is produced the execNativeCommand will throw Exception.
        String cmndPattern = arachneProp.getProperty("ipV4RouteTable.delete.os." + os);
        MessageFormat mf = new MessageFormat(cmndPattern);
        String[] cmnd = mf.format(cmndPattern, new Object[]{are.getDestinationNw(), 
-               are.getNetMask(), insertRouteInterface}).split(" ");
+               are.getNetMask(), are.getPort()}).split(" ");
+       logger.info(curThreadId+ " editRoute: delete command "+Arrays.asList(cmnd));
        String json = execNativeCommand(jilapiProp, cmnd);
+       logger.info(curThreadId+ " editRoute: after delete, OS routes = "+getRoutes(arachneProp, jilapiProp, os));
        
        cmndPattern = arachneProp.getProperty("ipV4RouteTable.insert.os." + os);
        mf = new MessageFormat(cmndPattern);
        cmnd = mf.format(cmndPattern, new Object[]{are.getDestinationNw(),
-               are.getNetMask(), insertRouteInterface, are.getMetric()}).split(" ");
+               are.getNetMask(), are.getPort(), are.getMetric(), are.getPublisherAddress().substring(1)}).split(" ");
+       logger.info(curThreadId+ " editRoute: insert command "+Arrays.asList(cmnd));
        json = execNativeCommand(jilapiProp, cmnd);
+       logger.info(curThreadId+ " editRoute: after insert, OS routes = "+getRoutes(arachneProp, jilapiProp, os));
        
        
        //If execNativeCommand method is successful, then update DB.
@@ -636,16 +680,22 @@ public class ArachU {
                c.close();
            }
        }
+       //test binita start
+       logger.info(curThreadId+ " editRoute: final OS routes = "+getRoutes(arachneProp, jilapiProp, os));
+       //test binita end
    }
    
    public static void deleteRoute(AbstractRouteEntry are, Properties arachneProp, 
            Properties jilapiProp, String os) throws Exception {
-       
+	   String curThreadId = Thread.currentThread().getId() + "";
+       logger.info(curThreadId+ " deleteRoute: entered with = "+are + "");
+       logger.info(curThreadId+ " deleteRoute: entered with os = "+os);
      //First delete and then insert route into system (there is no edit route command).This command does not produce any input stream, but on error, may produce a error stream
        //If error stream is produced the execNativeCommand will throw Exception.
-       String cmndPattern = arachneProp.getProperty("ipV4RouteTable.delete.os." + os);
+	   String cmndPattern = arachneProp.getProperty("ipV4RouteTable.delete.os." + os);
+         logger.info("deleteRoute: cmndPattern  = "+cmndPattern );
        MessageFormat mf = new MessageFormat(cmndPattern);
-       String[] cmnd = mf.format(cmndPattern, new Object[]{are.getDestinationNw(), are.getGateway(),
+       String[] cmnd = mf.format(cmndPattern, new Object[]{are.getDestinationNw(), 
                are.getNetMask(), are.getPort()}).split(" ");
        String json = execNativeCommand(jilapiProp, cmnd);
        
@@ -678,6 +728,9 @@ public class ArachU {
                c.close();
            }
        }
+       //test binita start
+       logger.info(curThreadId+ " deleteRoute: final OS routes = "+getRoutes(arachneProp, jilapiProp, os));
+       //test binita end
    }
    
    public static int getDBEntryId(AbstractRouteEntry are) throws SQLException {

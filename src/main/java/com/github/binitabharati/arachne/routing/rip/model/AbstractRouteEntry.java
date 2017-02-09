@@ -18,6 +18,10 @@ public class AbstractRouteEntry extends RouteEntry{
     //Property used for RIP split horizon feature.
     private String publisherAddress;
     
+    private Long routeInstalledTimeInNanoSecs;//The time at which this route got installed/updated.Used wrt to the RIP stale route timer.
+    private Long routeHoldDownTimeInNanoSecs;//The time at which the route was marked for hold down.Used wrt RIP hold down timer.
+    private Long routeMarkedForDeletionTimeInNanoSecs;//The time at which the route was marked for deletion.Used wrt RIP flush timer.
+    
     //Property used to mark a deleted route. randomAccessFile doesnt allow deletions.
     //private boolean deleted;
     
@@ -40,38 +44,37 @@ public class AbstractRouteEntry extends RouteEntry{
         this.publisherAddress = publisherAddress;
     }
     
-    
-  /*  public boolean isDeleted() {
-        return deleted;
-    }
+    public Long getRouteInstalledTimeInNanoSecs() {
+		return routeInstalledTimeInNanoSecs;
+	}
 
-    public void setDeleted(boolean deleted) {
-        this.deleted = deleted;
-    }*/
-    
-    @Override
-    public int hashCode() {
-        // TODO Auto-generated method stub
-        String hash = destinationNw + netMask;
-        return  hash.hashCode();
-    }
-    
-    @Override
-    public boolean equals(Object obj) {
-        // TODO Auto-generated method stub
-        AbstractRouteEntry input = (AbstractRouteEntry)obj;
-        if (this.destinationNw.equals(input.getDestinationNw()) && this.netMask.equals(input.getNetMask())) {
-            return true;
-        }
-        return false;
-    }
+	public void setRouteInstalledTimeInNanoSecs(Long routeInstalledTimeInNanoSecs) {
+		this.routeInstalledTimeInNanoSecs = routeInstalledTimeInNanoSecs;
+	}
+	
+	
+	public Long getRouteMarkedForDeletionTimeInNanoSecs() {
+		return routeMarkedForDeletionTimeInNanoSecs;
+	}
 
-    @Override
+	public void setRouteMarkedForDeletionTimeInNanoSecs(Long routeMarkedForDeletionTimeInNanoSecs) {
+		this.routeMarkedForDeletionTimeInNanoSecs = routeMarkedForDeletionTimeInNanoSecs;
+	}
+	
+    public Long getRouteHoldDownTimeInNanoSecs() {
+		return routeHoldDownTimeInNanoSecs;
+	}
+
+	public void setRouteHoldDownTimeInNanoSecs(Long routeHoldDownTimeInNanoSecs) {
+		this.routeHoldDownTimeInNanoSecs = routeHoldDownTimeInNanoSecs;
+	}
+
+	@Override
     public String toString() {
         // TODO Auto-generated method stub
-        //DO NOT change the format of this!! This is used to write into RIP route entry file.
         return "{" + destinationNw + ";" + gateway + ";" + netMask + ";" + metric 
-                + ";" + port + ";" + publisherAddress  + "}";
+                + ";" + port + ";" + publisherAddress  + ";" + routeInstalledTimeInNanoSecs+";"
+        + routeHoldDownTimeInNanoSecs +";" + routeMarkedForDeletionTimeInNanoSecs + "}";
     }
   
 }

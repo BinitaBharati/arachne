@@ -135,7 +135,7 @@ public class RouteProcessor extends Worker{
                         logger.debug(curThreadId+ " processRoute: matching route found for "+rcvdRoute);                      
                         logger.debug(curThreadId+ " processRoute: "+rcvdRoute.getDestinationNw() +" - metric1 "+rcvdRoute.getMetric() + ", metric2 = "+each.getMetric());
                         //logger.info(curThreadId+ " processRoute: "+rcvdRoute);
-                        if (!skipRouteUpdates(each)) {
+                        if (!skipRouteUpdates(each, packetSender)) {
                         	
                         		if (Integer.parseInt(rcvdRoute.getMetric() + 1) < Integer.parseInt(each.getMetric())) { 
                                 	 //install new route , remove old one.                            
@@ -153,19 +153,22 @@ public class RouteProcessor extends Worker{
                                     
                                     //reset RIP stale timer
                             		each.setRouteInstalledTimeInNanoSecs(System.nanoTime());
-                                    logger.debug(curThreadId+" processRoute: after editing existing route "+absRouteEntry);
+                            		each.setRouteHoldDownTimeInNanoSecs(null);
+
                                     
                                 } else if (rcvdRoute.getPublisherAddress().equals(each.getPublisherAddress())) {
                                 	//no update in the route entry, just that the RIP stale timer needs to be reset.
                                 	//reset RIP stale timer
                                     logger.debug(curThreadId+" processRoute: updating stale timer for  "+each);
 
+                                    //reset RIP stale timer
                             		each.setRouteInstalledTimeInNanoSecs(System.nanoTime());
+                            		each.setRouteHoldDownTimeInNanoSecs(null);
                                     logger.debug(curThreadId+" processRoute: after editing existing route "+absRouteEntry);
                                 }
-                        		
+                        		                       		
                         	} else {
-                                logger.debug(curThreadId+ " processRoute: skipping processing of installed route = "+each);
+                                logger.debug(curThreadId+ " processRoute: skipping processing of installed route = "+each + " with publisher address = "+packetSender);
                                 logger.debug(curThreadId+ " processRoute: skipping processing of received route = "+rcvdRoute);
 
 
@@ -203,11 +206,17 @@ public class RouteProcessor extends Worker{
         return false;
     }
     
-    private boolean skipRouteUpdates(AbstractRouteEntry are) {
-    	if (are.getPublisherAddress() != null) {
-    		if (are.getRouteHoldDownTimeInNanoSecs() != null) {
+    private boolean skipRouteUpdates(AbstractRouteEntry installedRoute, String rcvdRoutePublisherAddress) {
+    	logger.debug("skipRouteUpdates: entered with "+installedRoute);
+    	if (installedRoute.getPublisherAddress() != null && rcvdRoutePublisherAddress != null) {
+    		if (installedRoute.getRouteHoldDownTimeInNanoSecs() != null) {
+    			if (installedRoute.getPublisherAddress().equals(rcvdRoutePublisherAddress)) {
+    				//installedRoute.setRouteHoldDownTimeInNanoSecs(null);
+    				return false;
+    			}
+    			//installed route publisher adddress is not same as received route publisher address.
             	Long currentTimeInNanoSecs = System.nanoTime();
-    			Long timeElapsedSinceRouteHoldDown = currentTimeInNanoSecs - are.getRouteHoldDownTimeInNanoSecs();
+    			Long timeElapsedSinceRouteHoldDown = currentTimeInNanoSecs - installedRoute.getRouteHoldDownTimeInNanoSecs();
     			long elapsedTime = TimeUnit.SECONDS.convert(timeElapsedSinceRouteHoldDown, TimeUnit.NANOSECONDS);
     			if (elapsedTime < ArachU.RIP_ROUTE_HOLD_INTERVAL_SECS) {
     				return true;

@@ -3,6 +3,9 @@ package com.github.binitabharati.arachne.routing.rip.model;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.github.binitabharati.arachne.service.model.RouteEntry;
 
 /**
@@ -13,7 +16,10 @@ import com.github.binitabharati.arachne.service.model.RouteEntry;
  *
  */
 
-public class AbstractRouteEntry extends RouteEntry{
+public class AbstractRouteEntry extends RouteEntry {
+	
+	public static final Logger logger = LoggerFactory.getLogger(AbstractRouteEntry.class);//prints to arachne.log
+
     
     //Property used for RIP split horizon feature.
     private String publisherAddress;
@@ -76,5 +82,37 @@ public class AbstractRouteEntry extends RouteEntry{
                 + ";" + port + ";" + publisherAddress  + ";" + routeInstalledTimeInNanoSecs+";"
         + routeHoldDownTimeInNanoSecs +";" + routeMarkedForDeletionTimeInNanoSecs + "}";
     }
+	
+	@Override
+	public boolean equals(Object obj) {
+		// TODO Auto-generated method stub
+		AbstractRouteEntry are = (AbstractRouteEntry)obj;
+		logger.debug("equals: entered with "+are);
+		if (this.getDestinationNw() != null && are.getDestinationNw() != null 
+				&& this.getNetMask() != null && are.getNetMask() != null ) {
+			if (this.getMetric() != null && are.getMetric() != null) {//check added for junit test2
+				logger.debug("metric is not null");
+				if (this.getDestinationNw().equals(are.getDestinationNw()) && this.getNetMask().equals(are.getNetMask())
+						&& this.getMetric().equals(are.getMetric())) {
+					
+					return true;
+				}
+			}
+			else if (this.getDestinationNw().equals(are.getDestinationNw()) && this.getNetMask().equals(are.getNetMask())) {
+				logger.debug("metric is null");
+				return true;
+			}
+			
+		}
+		
+		return false;
+	}
+		
+	/*@Override
+	protected Object clone() throws CloneNotSupportedException {
+		// TODO Auto-generated method stub
+		return new AbstractRouteEntry(this.getDestinationNw(), this.getGateway(), this.getNetMask(), 
+				this.getMetric(), this.getPort(), this.getPublisherAddress());
+	}*/
   
 }

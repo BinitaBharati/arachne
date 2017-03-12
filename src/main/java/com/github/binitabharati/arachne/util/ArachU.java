@@ -590,27 +590,62 @@ public class ArachU {
        //If execNativeCommand method is successful, then update DB.
        Connection c = null;
        PreparedStatement  stmt = null;
-       try {         
-             c = getConnection();
-             //c.setAutoCommit(false);
-             System.out.println("Opened database successfully");
+       try {  
+    	     //Allow only one thread to add entry for a combination of destionationNw and netMask
+    	     String lockStr = are.getDestinationNw() + are.getNetMask() + "".intern();
+    	     //synchronized (lockStr) {
+    	    	 c = getConnection();
+                 System.out.println("Opened database successfully");
+                 
+                 //test start
+                 /*List<AbstractRouteEntry> tmp1 = getAbsoluteRoutes(arachneProp, jilapiProp, os);
+	    		 logger.debug(curThreadId + " addRoute: b4 adding = "+are + " DB looks as below :");
+	    		 logger.debug(curThreadId + " addRoute: b4 adding = "+tmp1);*/
+                 //test end
+	    		 
+    	    	 //check if the combination of destionationNw and netMask already exists.
+    	    	 String readSql = "SELECT ID from ROUTE_ENTRY WHERE DESTINATION_NW = ? AND  NETMASK = ?";
+    	    	 stmt = c.prepareStatement(readSql);
+    	    	 stmt.setString(1, are.getDestinationNw());
+    	    	 stmt.setString(2, are.getNetMask());
+                 //c.setAutoCommit(false);
+    	    	 int key = -1;
+    	    	 ResultSet rs = stmt.executeQuery();
+    	    	 while (rs.next()) {
+    	             key  = rs.getInt("ID");
+    	             break; //there should be only 1 entry for a particular DESTINATION_NW & NETMASK
+    	         }
+    	    	 
+    	    	 if (key != -1) {
+    	    		   logger.debug(curThreadId + " addRoute: route entry = "+are + " already exists!. Returning without adding.");
 
-             String sql = "INSERT INTO ROUTE_ENTRY (ID,DESTINATION_NW,GATEWAY,NETMASK,METRIC,PORT,PUBLISHER_ADDRESS) " +
-                     "VALUES (?, ?, ?, ?, ?, ?, ? );"; 
-             stmt = c.prepareStatement(sql);
-             //stmt.setInt(1, 1);  //https://www.sqlite.org/autoinc.html
-             stmt.setString(2, are.getDestinationNw());
-             stmt.setString(3, are.getGateway());
-             stmt.setString(4, are.getNetMask());
-             stmt.setString(5, are.getMetric());
-             stmt.setString(6, are.getPort());
-             stmt.setString(7, are.getPublisherAddress());
-                       
-             stmt.executeUpdate();
+    	    		   return;
+    	    	 }
+    	        
+                 String sql = "INSERT INTO ROUTE_ENTRY (ID,DESTINATION_NW,GATEWAY,NETMASK,METRIC,PORT,PUBLISHER_ADDRESS) " +
+                         "VALUES (?, ?, ?, ?, ?, ?, ? );"; 
+                 stmt = c.prepareStatement(sql);
+                 //stmt.setInt(1, 1);  //https://www.sqlite.org/autoinc.html
+                 stmt.setString(2, are.getDestinationNw());
+                 stmt.setString(3, are.getGateway());
+                 stmt.setString(4, are.getNetMask());
+                 stmt.setString(5, are.getMetric());
+                 stmt.setString(6, are.getPort());
+                 stmt.setString(7, are.getPublisherAddress());
+                           
+                 stmt.executeUpdate();
 
-             stmt.close();
-             //c.commit();
-             //c.close();
+                 stmt.close();
+                 
+                 //test start
+                 /*List<AbstractRouteEntry> tmp2 = getAbsoluteRoutes(arachneProp, jilapiProp, os);
+	    		 logger.debug(curThreadId + " addRoute: after adding = "+are + " DB looks as below :");
+	    		 logger.debug(curThreadId + " addRoute: after adding = "+tmp2);*/
+                 //test end
+                 //c.commit();
+                 //c.close();
+			//}
+             
        } catch ( Exception e ) {
          e.printStackTrace();
          //System.exit(0);
@@ -655,7 +690,14 @@ public class ArachU {
          //c.setAutoCommit(false);
          System.out.println("Opened database successfully");
          
+         //test start
+         List<AbstractRouteEntry> tmp2 = getAbsoluteRoutes(arachneProp, jilapiProp, os);
+		 logger.debug(curThreadId + " addRoute: b4 editing = "+are + " DB looks as below :");
+		 logger.debug(curThreadId + " addRoute: b4 editing = "+tmp2);
+         //test end
+		 
          int id = getDBEntryId(are);
+         logger.debug(curThreadId+ " editRoute: DB entry Id "+id);
 
          String sql = "UPDATE ROUTE_ENTRY SET GATEWAY = ?, METRIC = ?, PORT = ?, PUBLISHER_ADDRESS = ? where ID = ?";
          stmt = c.prepareStatement(sql);
@@ -669,6 +711,13 @@ public class ArachU {
          stmt.executeUpdate();
 
          stmt.close();
+         
+         //test start
+         List<AbstractRouteEntry> tmp3 = getAbsoluteRoutes(arachneProp, jilapiProp, os);
+		 logger.debug(curThreadId + " addRoute: after editing = "+are + " DB looks as below :");
+		 logger.debug(curThreadId + " addRoute: after editing = "+tmp3);
+         //test end
+		 
          //c.commit();
          //c.close();
        } catch ( Exception e ) {
@@ -748,11 +797,15 @@ public class ArachU {
          stmt.setString(2, are.getNetMask());         
          
          ResultSet rs = stmt.executeQuery();
-         
+         logger.debug("getDBEntryId: got route entries for "+are);
+
+         int rsCount = 0;
          while (rs.next()) {
              key  = rs.getInt("ID");
-             break; //there should be only 1 entry for a particular DESTINATION_NW & NETMASK
+             //break; //there should be only 1 entry for a particular DESTINATION_NW & NETMASK
+             rsCount++;
          }
+         logger.debug("getDBEntryId: got route entries of size "+rsCount);
 
          stmt.close();
          //c.commit();
@@ -892,6 +945,8 @@ public class ArachU {
     }
        return null;
    }
+   
+   
    
     public static void main(String[] args) throws Exception {
         //mapRoute(null);

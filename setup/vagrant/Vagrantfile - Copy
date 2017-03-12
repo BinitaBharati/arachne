@@ -17,7 +17,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     net1mc1.vm.provider :virtualbox do |v|
       v.name = "net1mc1"
       v.customize ["modifyvm", :id, "--memory", "1048"]
-      v.gui = true
+	 #v.gui = true
 
     end
     net1mc1.vm.network :private_network, ip: "192.168.10.12"
@@ -34,7 +34,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     net1mc2.vm.provider :virtualbox do |v|
       v.name = "net1mc2"
       v.customize ["modifyvm", :id, "--memory", "1048"]
-      v.gui = true
+	 #v.gui = true
     end
     net1mc2.vm.network :private_network, ip: "192.168.10.13"
     net1mc2.vm.hostname = "net1mc2"
@@ -47,7 +47,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     router1.vm.provider :virtualbox do |v|
       v.name = "router1"
       v.customize ["modifyvm", :id, "--memory", "1048"]
-      v.gui = true
+	#v.gui = true
     end
     #Host only networking. Default netmask is 255.255.255.0
     router1.vm.network :private_network, ip: "192.168.10.11"
@@ -63,7 +63,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
      net4mc1.vm.provider :virtualbox do |v|
       v.name = "net4mc1"
       v.customize ["modifyvm", :id, "--memory", "1048"]
-      v.gui = true
+	 #v.gui = true
     end
     net4mc1.vm.network :private_network, ip: "192.168.40.12"
     net4mc1.vm.hostname = "net4mc1"
@@ -78,7 +78,6 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
         net2mc1.vm.provider :virtualbox do |v|
       v.name = "net2mc1"
       v.customize ["modifyvm", :id, "--memory", "1048"]
-      v.gui = true
     end
     net2mc1.vm.network :private_network, ip: "192.168.20.13"
     net2mc1.vm.hostname = "net2mc1"
@@ -90,7 +89,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     net2mc2.vm.provider :virtualbox do |v|
       v.name = "net2mc2"
       v.customize ["modifyvm", :id, "--memory", "1048"]
-      v.gui = true
+	 #v.gui = true
     end
     net2mc2.vm.network :private_network, ip: "192.168.20.14"
     net2mc2.vm.hostname = "net2mc2"
@@ -103,7 +102,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     router2.vm.provider :virtualbox do |v|
       v.name = "router2"
       v.customize ["modifyvm", :id, "--memory", "1048"]
-      v.gui = true
+      #v.gui = true
     end
     router2.vm.network :private_network, ip: "192.168.20.12"
     router2.vm.network :private_network, ip: "192.168.30.11"
@@ -117,7 +116,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     router3.vm.provider :virtualbox do |v|
       v.name = "router3"
       v.customize ["modifyvm", :id, "--memory", "1048"]
-      v.gui = true
+      #v.gui = true
     end
     router3.vm.network :private_network, ip: "192.168.30.12"
     router3.vm.network :private_network, ip: "192.168.40.13"
@@ -130,7 +129,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
      net3mc1.vm.provider :virtualbox do |v|
       v.name = "net3mc1"
       v.customize ["modifyvm", :id, "--memory", "1048"]
-      v.gui = true
+	 #v.gui = true
 
     end
     net3mc1.vm.network :private_network, ip: "192.168.30.13"
@@ -145,7 +144,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
      workstation.vm.provider :virtualbox do |v|
       v.name = "workstation"
       v.customize ["modifyvm", :id, "--memory", "1048"]
-      v.gui = true
+	 #v.gui = true
 
     end
     workstation.vm.network :private_network, ip: "192.168.50.11"

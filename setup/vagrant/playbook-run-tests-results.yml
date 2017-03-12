@@ -1,0 +1,12 @@
+---
+- hosts: network 
+  remote_user: vagrant
+
+  tasks:
+  - name: Slurp remote junit log file
+    slurp: src=/home/vagrant/arachne/junitResults.log
+    register: slurpJunitResultsFile
+
+  #Print content of remote runSanity.log file into local console
+  - name: Print the Junit results
+    debug: msg="Junit results {{ slurpJunitResultsFile['content'] | b64decode}}"

@@ -1,0 +1,30 @@
+---
+- hosts: network 
+  remote_user: vagrant
+
+
+  tasks:
+  - copy: src=/home/vagrant/deploy/target/arachne-0.0.1-SNAPSHOT.jar dest=/home/vagrant/
+ 
+
+  - name: Creates directory
+    file: path=/home/vagrant/arachne/logs state=directory recurse=yes 
+  
+  - name: Move project artifacts to required path
+    command: "{{ item }}"
+    with_items:
+    - mv /home/vagrant/arachne-0.0.1-SNAPSHOT.jar /home/vagrant/arachne/
+
+  #Ansible script module will also copy the script to the remote
+  #location before executing it.So, no need to exclusively copy
+  #it to remote.
+  - name: Check and kill if the java process exists
+    script: /home/vagrant/deploy/target/scripts/check.sh
+  
+  #Copy the desired script to the remote location from the workstation server.
+  - copy: src=/home/vagrant/deploy/target/scripts/run.sh dest=/home/vagrant/arachne/ mode=0777
+  
+    
+  - name: Execute run.sh
+    become: true
+    shell: /home/vagrant/arachne/run.sh

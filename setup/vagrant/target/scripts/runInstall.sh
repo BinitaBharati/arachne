@@ -14,7 +14,7 @@ cat /dev/zero | ssh-keygen -q -N ""
 cat ~/.ssh/id_rsa.pub | sshpass -p vagrant ssh -o StrictHostKeyChecking=no vagrant@192.168.10.12 ' cat >> ~/.ssh/authorized_keys'
 
 
-cat ~/.ssh/id_rsa.pub | sshpass -p vagrant ssh -o StrictHostKeyChecking=no vagrant@192.168.10.13 'cat >> ~/.ssh/authorized_keys'
+#cat ~/.ssh/id_rsa.pub | sshpass -p vagrant ssh -o StrictHostKeyChecking=no vagrant@192.168.10.13 'cat >> ~/.ssh/authorized_keys'
 
 
 cat ~/.ssh/id_rsa.pub | sshpass -p vagrant ssh -o StrictHostKeyChecking=no vagrant@192.168.10.11 'cat >> ~/.ssh/authorized_keys'
@@ -23,7 +23,7 @@ cat ~/.ssh/id_rsa.pub | sshpass -p vagrant ssh -o StrictHostKeyChecking=no vagra
 cat ~/.ssh/id_rsa.pub | sshpass -p vagrant ssh -o StrictHostKeyChecking=no vagrant@192.168.40.12 'cat >> ~/.ssh/authorized_keys'
 
 
-cat ~/.ssh/id_rsa.pub | sshpass -p vagrant ssh -o StrictHostKeyChecking=no vagrant@192.168.20.13 'cat >> ~/.ssh/authorized_keys'
+#cat ~/.ssh/id_rsa.pub | sshpass -p vagrant ssh -o StrictHostKeyChecking=no vagrant@192.168.20.13 'cat >> ~/.ssh/authorized_keys'
 
 
 cat ~/.ssh/id_rsa.pub | sshpass -p vagrant ssh -o StrictHostKeyChecking=no vagrant@192.168.20.14 'cat >> ~/.ssh/authorized_keys'

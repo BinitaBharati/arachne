@@ -25,22 +25,6 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     net1mc1.vm.provision :shell, path: "target/scripts/non-router.sh"
     end
 
-    #net1mc2	
-    config.vm.define :net1mc2 do |net1mc2|
-    #net1mc2.vm.provider "virtualbox" do |v|
-      #v.vmx["memsize"]  = "1048"
-	 #v.gui = true
-    #end
-    net1mc2.vm.provider :virtualbox do |v|
-      v.name = "net1mc2"
-      v.customize ["modifyvm", :id, "--memory", "1048"]
-      v.gui = true
-    end
-    net1mc2.vm.network :private_network, ip: "192.168.10.13"
-    net1mc2.vm.hostname = "net1mc2"
-    net1mc2.vm.provision :shell, path: "target/scripts/non-router.sh"
-    end
-
 
     #router1, n/wks : 192.168.10.0/24, 192.168.20.0.24, 192.168.40.0/24
     config.vm.define :router1 do |router1|
@@ -70,24 +54,10 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     net4mc1.vm.provision :shell, path: "target/scripts/non-router.sh"
     end
 
-    
-    
     #net2 - 192.168.20.0/24
-    #net2mc1	
-    config.vm.define :net2mc1 do |net2mc1|
-        net2mc1.vm.provider :virtualbox do |v|
-      v.name = "net2mc1"
-      v.customize ["modifyvm", :id, "--memory", "1048"]
-      v.gui = true
-    end
-    net2mc1.vm.network :private_network, ip: "192.168.20.13"
-    net2mc1.vm.hostname = "net2mc1"
-    net2mc1.vm.provision :shell, path: "target/scripts/non-router.sh"
-    end
-
-     #net2mc2	
+    #net2mc2	
     config.vm.define :net2mc2 do |net2mc2|
-    net2mc2.vm.provider :virtualbox do |v|
+        net2mc2.vm.provider :virtualbox do |v|
       v.name = "net2mc2"
       v.customize ["modifyvm", :id, "--memory", "1048"]
       v.gui = true
@@ -96,7 +66,6 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     net2mc2.vm.hostname = "net2mc2"
     net2mc2.vm.provision :shell, path: "target/scripts/non-router.sh"
     end
-
 
     #router2, n/wks - 192.168.20.0/24, 192.168.30.0/24	
     config.vm.define :router2 do |router2|

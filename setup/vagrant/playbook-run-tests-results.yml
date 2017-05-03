@@ -4,7 +4,7 @@
 
   tasks:
   - name: Slurp remote junit log file
-    slurp: src=/home/vagrant/arachne/junitResults.log
+    slurp: src=/home/vagrant/arachne/runSanity.log
     register: slurpJunitResultsFile
 
   #Print content of remote runSanity.log file into local console

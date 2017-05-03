@@ -85,9 +85,10 @@ public class MulticastListener extends Worker {
                 		return false;
                 	}
                 }).collect(Collectors.toList());
+                logger.debug("MulticastListener: filteredIntfPrefixList = "+filteredIntfPrefixList);
                 for (String eachFilteredIntfPrefix : filteredIntfPrefixList) {
                 	if (ArachU.intfToListeningPortMap.keySet().contains(eachFilteredIntfPrefix)) {
-                    	
+                    			logger.debug("MulticastListener: starting ListenerWorker for port prefix = "+eachFilteredIntfPrefix);
                     		    ListenerWorkers listenerWorker = new ListenerWorkers(ArachU.intfToListeningPortMap.get(eachFilteredIntfPrefix));
                     		    excService.submit(listenerWorker);
                                                                                                
@@ -113,6 +114,7 @@ public class MulticastListener extends Worker {
     	private MulticastSocket multicastSocket;
     	
     	public ListenerWorkers(Integer listenerPort) {
+    		logger.debug("ListenerWorkers: constructor entered for "+listenerPort);
     		this.listenerPort = listenerPort;
     		try {
 				this.multicastSocket = new MulticastSocket(listenerPort);
@@ -128,6 +130,8 @@ public class MulticastListener extends Worker {
     	
 		@Override
 		public void run() {
+			long tId = Thread.currentThread().getId();
+    		logger.debug(tId + " ListenerWorkers -> run: entered for port "+listenerPort);
 			// TODO Auto-generated method stub
 			while (true) {
 				DatagramPacket packet = new DatagramPacket(new byte[4096], 4096);
@@ -135,9 +139,10 @@ public class MulticastListener extends Worker {
 					multicastSocket.receive(packet);
 				} catch (IOException e) {
 					// TODO Auto-generated catch block
+					logger.error(tId + " ListenerWorkers -> run: caught IOexception while awaiting to receive");
 					e.printStackTrace();
 				}
-                logger.debug("run: Got packet123 " + 
+                logger.debug(tId + " ListenerWorkers -> run: Got packet123 " + 
                         Arrays.toString(packet.getData()) + " from port = "+listenerPort);              
                 boolean added = store.offer(packet);//offer can not block, as I have not set any capacity to the underlying LinkedList
                 packet = new DatagramPacket(new byte[4096], 4096);

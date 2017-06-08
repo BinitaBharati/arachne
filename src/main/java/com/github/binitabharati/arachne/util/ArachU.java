@@ -58,7 +58,7 @@ import org.slf4j.LoggerFactory;
 import com.github.binitabharati.arachne.nwking.model.IpV4Address;
 import com.github.binitabharati.arachne.routing.rip.model.AbstractRouteEntry;
 import com.github.binitabharati.arachne.routing.service.RIPImpl;
-import com.github.binitabharati.arachne.routing.service.worker.rip.MulticastSender;
+import com.github.binitabharati.arachne.routing.service.nio.worker.rip.MulticastSender;
 import com.github.binitabharati.arachne.sbe.stubs.MessageHeaderDecoder;
 import com.github.binitabharati.arachne.sbe.stubs.MessageHeaderEncoder;
 import com.github.binitabharati.arachne.sbe.stubs.RoutesDecoder;
@@ -583,7 +583,7 @@ public class ArachU {
        String cmndPattern = arachneProp.getProperty("ipV4RouteTable.insert.os." + os);
        MessageFormat mf = new MessageFormat(cmndPattern);
        String[] cmnd = mf.format(cmndPattern, new Object[]{are.getDestinationNw(), 
-               are.getNetMask(), are.getPort(), are.getMetric(), are.getPublisherAddress().substring(1)}).split(" ");
+               are.getNetMask(), are.getPort(), are.getMetric(), are.getPublisherAddress()}).split(" ");
        String json = execNativeCommand(jilapiProp, cmnd);
        
        
@@ -676,7 +676,7 @@ public class ArachU {
        cmndPattern = arachneProp.getProperty("ipV4RouteTable.insert.os." + os);
        mf = new MessageFormat(cmndPattern);
        cmnd = mf.format(cmndPattern, new Object[]{are.getDestinationNw(),
-               are.getNetMask(), are.getPort(), are.getMetric(), are.getPublisherAddress().substring(1)}).split(" ");
+               are.getNetMask(), are.getPort(), are.getMetric(), are.getPublisherAddress()}).split(" ");
        logger.info(curThreadId+ " editRoute: insert command "+Arrays.asList(cmnd));
        json = execNativeCommand(jilapiProp, cmnd);
        logger.info(curThreadId+ " editRoute: after insert, OS routes = "+getRoutes(arachneProp, jilapiProp, os));

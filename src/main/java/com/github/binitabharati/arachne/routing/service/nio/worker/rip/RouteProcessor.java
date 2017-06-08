@@ -1,19 +1,26 @@
-package com.github.binitabharati.arachne.routing.service.worker.rip;
+package com.github.binitabharati.arachne.routing.service.nio.worker.rip;
 
+import java.io.ByteArrayInputStream;
 import java.net.DatagramPacket;
+import java.text.MessageFormat;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Queue;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.esotericsoftware.kryo.Kryo;
+import com.esotericsoftware.kryo.io.Input;
 import com.github.binitabharati.arachne.nwking.model.IpV4Address;
 import com.github.binitabharati.arachne.routing.rip.model.AbstractRouteEntry;
 import com.github.binitabharati.arachne.routing.service.worker.Worker;
-import com.github.binitabharati.arachne.routing.service2.ReceivedData;
+import com.github.binitabharati.arachne.service.model.RouteEntry;
 import com.github.binitabharati.arachne.util.ArachU;
 
 /**
@@ -31,7 +38,7 @@ public class RouteProcessor extends Worker{
     private Properties arachneProp;
     private Properties jilapiProp;
     private String os;
-    private Queue<ReceivedData> store;
+    private Queue<DatagramPacket> store;
     private Queue<AbstractRouteEntry> absRouteEntry;
     boolean isSplitHorizon;
     private Map<String, String> routeProcessingMap;//thread safe ConcurrentHashMap
@@ -41,7 +48,7 @@ public class RouteProcessor extends Worker{
         absRouteEntry.add(routeEntry);
     }
        
-    public RouteProcessor(Properties arachneProp,Properties jilapiProp,  String os, Queue<ReceivedData> store,
+    public RouteProcessor(Properties arachneProp,Properties jilapiProp,  String os, Queue<DatagramPacket> store,
             Queue<AbstractRouteEntry> absRouteEntry, boolean isSplitHorizon,
             List<IpV4Address> hostInterfaceIpList, Map<String, String> routeProcessingMap) {
         this.workerType = Worker.WorkerType.routeProcessor;
@@ -66,16 +73,12 @@ public class RouteProcessor extends Worker{
             String packetSender = null;
             while (true) {
                 byte[] received = null;               
-                ReceivedData dp = store.poll();//non blocking call.
+                DatagramPacket dp = store.poll();//non blocking call.
                 if (dp != null) {
-                    packetSender = dp.getSender();
-                    logger.debug("run: packetSender = "+packetSender);
-                    //packetSender -> /192.168.10.12:54615
-                    packetSender = packetSender.substring(1, packetSender.indexOf(":"));
-                    logger.debug("run: packetSender1 = "+packetSender);
+                    packetSender = dp.getAddress().toString();
                     boolean senderIsSameHost = false;
                     for (IpV4Address eachHostIp : hostInterfaceIpList) {
-                        if (eachHostIp.getIpAddress().equals(packetSender)) {
+                        if (eachHostIp.getIpAddress().equals(packetSender.substring(1))) {
                             senderIsSameHost = true;
                         }
                     }
@@ -86,7 +89,7 @@ public class RouteProcessor extends Worker{
                         //String receivedStr = new String(received);
                         logger.debug(tName + "run: receivedRoutes = "+rcvdRoutes);
                         for (AbstractRouteEntry rcvdRouteEntry : rcvdRoutes) {
-                            processRoute(absRouteEntry, rcvdRouteEntry, packetSender);
+                            processRoute(absRouteEntry, rcvdRouteEntry, packetSender.substring(1));
                         }
                     }
                     

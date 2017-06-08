@@ -1,24 +1,31 @@
-package com.github.binitabharati.arachne.routing.service.worker.rip;
+package com.github.binitabharati.arachne.routing.service.nio.worker.rip;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.DatagramPacket;
+import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.MulticastSocket;
 import java.net.NetworkInterface;
-import java.net.StandardSocketOptions;
 import java.net.UnknownHostException;
-import java.nio.ByteBuffer;
-import java.nio.channels.DatagramChannel;
+import java.nio.charset.Charset;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.esotericsoftware.kryo.Kryo;
+import com.esotericsoftware.kryo.io.Output;
 import com.github.binitabharati.arachne.routing.service.worker.Worker;
 import com.github.binitabharati.arachne.service.model.RouteEntry;
 import com.github.binitabharati.arachne.util.ArachU;
@@ -26,23 +33,22 @@ import com.github.binitabharati.arachne.util.ArachU;
 /**
  * 
  * @author binita.bharati@gmail.com
- * The Sender of RIP multicasts - Based on NIO2 APIs
+ * The RIP multicast route sender.
  *
  */
 
-public class MulticastSender extends Worker{
+public class MulticastSender extends Worker {
     
     public static final Logger logger = LoggerFactory.getLogger(MulticastSender.class);
     
-    private String name = "MulticastSender2";
+    private String name = "MulticastSender";
     private static int port;
     private static long MULTICAST_SENDER_IDLE_TIME_SECS = 1;
     private InetAddress group;
     private String osName;
     private Properties arachneProp;
     private Properties jilapiProp;       
-    private DatagramChannel dgSocket;
-    private InetAddress multicastGrp;
+    private MulticastSocket dgSocket;
 
         
     public String getName() {
@@ -62,10 +68,8 @@ public class MulticastSender extends Worker{
         
         
             try {   
-            		this.multicastGrp = InetAddress.getByName(multicastGrpStr);     
                     this.group = InetAddress.getByName(multicastGrpStr); 
-                    dgSocket = DatagramChannel.open();
-                    dgSocket.bind(null);
+                    dgSocket = new MulticastSocket();
             }
             catch (UnknownHostException e) {
                 // TODO Auto-generated catch block
@@ -114,11 +118,8 @@ public class MulticastSender extends Worker{
                           	if (ArachU.intfToListeningPortMap.keySet().contains(eachFilteredIntfPrefix)) {
                             	Integer port = ArachU.intfToListeningPortMap.get(eachFilteredIntfPrefix);                         	
                                 logger.debug("run: sending MC traffic over interface = "+eachFilteredIntfPrefix + " and port = "+port);
-                                InetSocketAddress sockAddr = new InetSocketAddress(multicastGrp,
-                                		port); 
-                                ByteBuffer byteBuffer = ByteBuffer.wrap(buffer);
-                                dgSocket.setOption(StandardSocketOptions.IP_MULTICAST_IF, iface); 
-                            	dgSocket.send(byteBuffer, sockAddr);
+                                dgSocket.setNetworkInterface(iface);
+                            	dgSocket.send(new DatagramPacket(buffer, buffer.length, group, port));
                             	
                           	}
                     	  }

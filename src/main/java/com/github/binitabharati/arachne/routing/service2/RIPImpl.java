@@ -1,31 +1,18 @@
-package com.github.binitabharati.arachne.routing.service;
+package com.github.binitabharati.arachne.routing.service2;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.lang.reflect.Type;
 import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.net.InterfaceAddress;
 import java.net.MulticastSocket;
 import java.net.NetworkInterface;
-import java.sql.Connection;
-import java.sql.Statement;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Queue;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.LinkedBlockingQueue;
 
 import org.slf4j.Logger;
@@ -33,31 +20,27 @@ import org.slf4j.LoggerFactory;
 
 import com.github.binitabharati.arachne.nwking.model.IpV4Address;
 import com.github.binitabharati.arachne.routing.rip.model.AbstractRouteEntry;
-import com.github.binitabharati.arachne.routing.service.nio.worker.rip.MulticastListener;
-import com.github.binitabharati.arachne.routing.service.nio.worker.rip.MulticastSender;
-import com.github.binitabharati.arachne.routing.service.nio.worker.rip.RouteProcessor;
 import com.github.binitabharati.arachne.routing.service.worker.Worker;
 import com.github.binitabharati.arachne.routing.service.worker.rip.CleanupWorker;
-import com.github.binitabharati.arachne.service.model.RouteEntry;
+import com.github.binitabharati.arachne.routing.service.worker.rip.MulticastListener;
+import com.github.binitabharati.arachne.routing.service.worker.rip.MulticastSender;
+import com.github.binitabharati.arachne.routing.service.worker.rip.RouteProcessor;
 import com.github.binitabharati.arachne.util.ArachU;
-import com.github.binitabharati.jilapi.Jilapi;
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
 
 /**
  * 
  * @author binita.bharati@gmail.com
- * Implementation of the RIP protocol,
+ * Implementation of the RIP protocol, underlying classes uses NIO2 APIs.
  *
  */
 
+public class RIPImpl {
 
-public class RIPImpl{
     
     public static final Logger logger = LoggerFactory.getLogger(RIPImpl.class);
     
     private Queue<AbstractRouteEntry> absRouteEntry;
-    private Queue<DatagramPacket> store;
+    private Queue<ReceivedData> store;
     
     private boolean splitHorizon;
     private Properties arachneProp;
@@ -155,5 +138,7 @@ public class RIPImpl{
     }
 
     
+
+
 
 }

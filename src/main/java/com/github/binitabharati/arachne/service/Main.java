@@ -13,8 +13,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.github.binitabharati.arachne.routing.service.RIPImpl;
+import com.github.binitabharati.arachne.routing.service.nio.worker.rip.MulticastListener;
 import com.github.binitabharati.arachne.routing.service.worker.WorkerFactory;
-import com.github.binitabharati.arachne.routing.service.worker.rip.MulticastListener;
 import com.github.binitabharati.arachne.util.ArachU;
 
 /**
@@ -68,7 +68,8 @@ public class Main {
         List<String> activeRoutingProtocols = Arrays.asList(temp.split(","));
         for (String eachRP : activeRoutingProtocols) {
             if (eachRP.equalsIgnoreCase("RIP")) {
-            	RIPImpl rps = new RIPImpl(arachneProp, jilapiProp);
+            	//RIPImpl rps = new RIPImpl(arachneProp, jilapiProp);
+            	com.github.binitabharati.arachne.routing.service2.RIPImpl rps = new com.github.binitabharati.arachne.routing.service2.RIPImpl(arachneProp, jilapiProp);
                logger.debug("main: sleeping so that remote debugging can be enabled");
                //Thread.currentThread().sleep(1*60*1000);
                rps.init();

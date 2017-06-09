@@ -17,3 +17,5 @@ This library has been tested on Ubuntu VMs running over Oracle Virtual Box.A com
 7. Execute script to bring up the Routing Java service on all other VMs. `~/deploy/target/scripts/runInstall.sh` 
 8. Verify that the Java process has succesfully run in all the VMs.
 9. After succesful run of the `runInstall.sh` script, we will be able to see dynamically discovered route getting automatically added to the respective VMs.
+10.Attached below is the route table of `ROUTER2` with dynamically added routes highlighted in red.
+![Alt text](docs/rt1.png "Route table") <br />

@@ -14,6 +14,10 @@
 
 sudo apt-get -y install dos2unix
 
+#install sqlite3 - sqllite3 is the command-line equivalent to view sqlite DB file
+sudo apt-get update
+sudo apt-get install sqlite3 libsqlite3-dev
+
 
 
 

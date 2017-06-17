@@ -6,7 +6,7 @@
 
   #Copy the desired jar to the remote location from the workstation server.
   - name: Copy the test jar from workstation to remote server.
-    copy: src=/home/vagrant/deploy/target/arachne-0.0.1-SNAPSHOT-fat-tests.jar dest=/home/vagrant/arachne/
+    copy: src=/home/vagrant/deploy/target/arachne-test-0.0.1-SNAPSHOT.jar dest=/home/vagrant/arachne/
 
   #Copy the desired script to the remote location from the workstation server.
   - name: Copy the test script from workstation to remote server.

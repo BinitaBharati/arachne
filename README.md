@@ -1,7 +1,7 @@
 # Arachne
 Arachne is a Java-based routing library. This runs on simple Linux VMs, and makes such VMs to take on the role of a sophosticated router.As of now, it has implementation for RIPv2 protocol over UDP.
 
-## Set-up steps
+## Set-up
 ### Build
 The project has two sub projects `arachne.core` and `arachne.test`. `mvn clean package` will generate the artfifact jars for both core and test sub projects.
 ### Sample network diagram
@@ -27,3 +27,9 @@ This library has been tested on Ubuntu VMs running over Oracle Virtual Box.A com
 4. Execute script to verify the route entries.  `~/deploy/target/scripts/runTests.sh`.
 5. Attached below is the route table of `ROUTER2` with dynamically added routes highlighted in red.
 ![Alt text](docs/rt1.png "Route table") <br />
+
+
+## License
+
+Copyright © 2016 Binita Bharati <br />
+Distributed under the Apache license 2.0. 

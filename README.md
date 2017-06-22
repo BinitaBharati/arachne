@@ -1,5 +1,5 @@
 # Arachne
-Arachne is a Java-based routing library. This runs on simple Linux VMs, and makes such VMs to take on the role of a sophosticated router.As of now, it has implementation for RIPv2 protocol over UDP.
+Arachne is a Java-based routing library. This runs on simple Linux VMs, and makes such VMs to take on the role of a sophisticated router.As of now, it has implementation for RIPv2 protocol over UDP.
 
 ## Set-up
 ### Build

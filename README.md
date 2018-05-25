@@ -8,7 +8,7 @@ The project has two sub projects `arachne.core` and `arachne.test`. `mvn clean p
 ![Alt text](docs/ND.png "Network Diagram") <br />
 
 ### VMs set up
-This library has been tested on Ubuntu VMs running over Oracle Virtual Box.A combination of Vagrant and Ansible has been used to install/configure the VMs.
+This library has been tested on Ubuntu VMs running over Oracle Virtual Box.A combination of Vagrant and Ansible has been used to install/configure the VMs.Vagrant version is 1.9 on a Windows host.
 1. On the host machine, Oracle Virtual Box and Vagrant should be present.
 2. Minimum of 16 GB RAM is required on the host machine for optimal VM performance wrt sample configuration.
 3. Add the Vagrant Box (representing ubuntu/trusty64 OS image) to the host machine with command - `vagrant box add ubuntu/trusty64`
